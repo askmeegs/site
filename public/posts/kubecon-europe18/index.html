@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en-us" lang="en-us">
+<head>
+  <link href="//gmpg.org/xfn/11" rel="profile">
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta name="generator" content="Hugo 0.52" />
+
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>recap: multicluster kubernetes @ kubecon EU &middot; Megan O&#39;Keefe</title>
+
+  
+  <link type="text/css" rel="stylesheet" href="css/print.css" media="print">
+  <link type="text/css" rel="stylesheet" href="css/poole.css">
+  <link type="text/css" rel="stylesheet" href="css/syntax.css">
+  <link type="text/css" rel="stylesheet" href="css/hyde.css">
+  <link href="https://fonts.googleapis.com/css?family=PT+Serif|Tinos" rel="stylesheet">
+
+
+  
+  <link rel="apple-touch-icon-precomposed" sizes="144x144" href="/apple-touch-icon-144-precomposed.png">
+  <link rel="shortcut icon" href="/favicon.png">
+
+  
+  <link href="" rel="alternate" type="application/rss+xml" title="Megan O&#39;Keefe" />
+
+  
+</head>
+
+  <body class="theme-base-0d ">
+  <aside class="sidebar">
+  <div class="container sidebar-sticky">
+    <div class="sidebar-about">
+      <a href=""><h1>Megan O&#39;Keefe</h1></a>
+      <p class="lead">
+      ⚡️ developer programs engineer 
+      </p>
+    </div>
+
+    <nav>
+      <ul class="sidebar-nav">
+        <li><a href="">Home</a> </li>
+        <li><a href="/about/"> About </a></li>
+      </ul>
+    </nav>
+  </div>
+</aside>
+
+    <main class="content container">
+    <div class="post">
+  <h1>recap: multicluster kubernetes @ kubecon EU</h1>
+  <time datetime=2018-05-16T00:00:00Z class="post-date">Wed, May 16, 2018</time>
+  
+
+<p>This month, I attended <a href="https://events.linuxfoundation.org/events/kubecon-cloudnativecon-europe-2018/">Kubecon + CloudNativeCon EU</a>, in Copenhagen, Denmark. This conference covers not only <a href="https://kubernetes.io/">Kubernetes</a> but also the growing number of open source projects within the <a href="https://www.cncf.io/projects/">Cloud Native Computing Foundation</a>.</p>
+
+<p>It was an exciting conference, with lots of buzz especially around <a href="https://www.youtube.com/watch?v=_1-5YFfJCqM&amp;index=216&amp;list=PLj6h78yzYM2N8GdbjmhVU65KYm_68qBmo&amp;t=0s">Serverless</a> and Machine Learning with  <a href="https://www.youtube.com/watch?v=I6iMznIYwM8">Kubeflow</a>. I think we are also seeing that as more enterprises move to Kubernetes, the more stories they have to tell about their use cases, deployments, and challenges; overall, my favorite talk, <a href="https://www.youtube.com/watch?v=H06qrNmGqyE&amp;t=0s&amp;index=144&amp;list=PLj6h78yzYM2N8GdbjmhVU65KYm_68qBmo">from Sarah Wells</a> of the London Financial Times, included some awesome insights about adopting Kubernetes as an organization.</p>
+
+<p>But for me, most relevant were the talks about multicluster Kubernetes. In my current role, I think a lot about: how to lifecycle and manage lots of clusters from one touchpoint? How to orchestrate applications across clusters?</p>
+
+<p>There is a Special Interest Group within the Kubernetes organization <a href="https://github.com/kubernetes/community/blob/master/sig-multicluster/README.md">dedicated to multicluster</a>. Formerly called SIG Federation, this group has shifted their focus from &ldquo;one size fits all&rdquo; solutions, like the <a href="https://kubernetes.io/docs/concepts/cluster-administration/federation/">Federation v1</a> API, to a set of smaller, flexible tools that can fit a variety of use cases. With that new goal, some exciting projects (such as <a href="https://github.com/kubernetes/cluster-registry">cluster-registry</a> and <a href="https://github.com/GoogleCloudPlatform/k8s-multicluster-ingress">kubemci</a>) have emerged from that community.</p>
+
+<p>With all these changes afoot, it can be hard to step back and think about larger trends. Here is my attempt to tease out a few observations about the latest thinking for multicluster Kubernetes.</p>
+
+<h2 id="trend-1-a-move-to-disaggregation">Trend #1 - A Move to Disaggregation 🌌</h2>
+
+<p>The most common pain point I&rsquo;ve observed around K8s Federation is that when you deploy the Federation API Server into one cluster, that cluster becomes a single point of failure. Rob Szumski&rsquo;s <a href="https://www.youtube.com/watch?v=zVOIk7nO_ts">talk</a>, &ldquo;Kubernetes Multi-cluster Without Federation,&rdquo; touched on this. He also brought up an important issue around security: to work, the Federation API running on one cluster must be root, able to access all the namespaces in all the clusters.</p>
+
+<p>I liked Szumski&rsquo;s talk because he spoke to the big picture of what exactly operators need to do with multiple clusters. He made a key distinction between the infrastructure admins (who must connect, track, and secure the clusters) and the application owners (who must be able to execute <a href="https://www.atlassian.com/continuous-delivery/ci-vs-ci-vs-cd">CI/CD</a> pipelines across those clusters, work with secrets, failover policies, and set up cross-cluster <a href="https://www.datawire.io/guide/traffic/service-discovery-microservices/">service discovery</a>).</p>
+
+<p>Szumski used the common ground between those two user groups &ndash; the need for a clusters &ldquo;source of truth,&rdquo; and for security &ndash; to explore alternatives to Federation that promote a more disaggregated approach. In this approach, each cluster is autonomous, and no single cluster provides the entry point into all the others.</p>
+
+<p>One option, he said, is to deploy <a href="https://github.com/kubernetes/cluster-registry">cluster-registry</a> onto all the clusters, and then to write a small agent (also running on each cluster) to sync the <code>/cluster</code> resources. Users can then define policy by selecting clusters from the registry and creating a <code>ClusterPolicy</code>. A key advantage of this approach is that unlike Federation, clusters never have full write access to other clusters; for example, one app owner would not be able to modify a different application running another cluster in the group.</p>
+
+<p>Disaggregated multicluster intelligence, then, can help promote security best practices for multicluster in addition to promoting resilience. If one of Szumski&rsquo;s cluster-registry deployments goes down, for instance, <code>n-1</code> will still be running.</p>
+
+<h2 id="trend-2-hybrid-cloud-service-mesh">Trend #2 - Hybrid Cloud -&gt; Service Mesh 🕸</h2>
+
+<p>Sometimes, clusters live in the same Cloud - for instance, a user could have Dev, Build, and Prod clusters, all in AWS. But to an increasing degree, users are dealing with clusters that span different locations (on prem, public cloud), and are running applications where <a href="https://en.wikipedia.org/wiki/Microservices">microservices</a> span these different locations. These users need a way to handle load balancing across clusters, routing policies that span multiple clusters, cross-cluster service discovery, and failover policy.</p>
+
+<p><a href="https://istio.io/">Istio</a> aims to fill these gaps in the future. One cool Google/Cisco <a href="https://www.youtube.com/watch?v=bLJL53UIcqI">talk</a> explored how users can make use of new Istio multicluster features to run applications that span multiple clouds. In a multicluster Istio setup, one cluster runs a primary <a href="https://istio.io/docs/concepts/what-is-istio/overview.html#pilot">Pilot</a>, through which users can define cross-cluster policy. This primary Pilot knows about all the <a href="https://istio.io/docs/concepts/what-is-istio/overview.html#envoy">Envoy sidecars</a> running across all the clusters. In their demo, they showed
+different versions of the same microservice running in two different GKE clusters, then demonstrated that by setting up an Istio rule in the primary pilot, they could send all traffic to the latest version running in one cluster.</p>
+
+<p>I think the idea of a multicluster <a href="https://thenewstack.io/history-service-mesh/">service mesh</a> is really exciting, and also reflects the disaggregation trend for multicluster; in Istio, by relying on lots of Envoy proxies to intelligently handle traffic into your applications, you are offloading control to each of your multiple clusters.</p>
+
+<h2 id="trend-3-cluster-management-at-scale">Trend #3 - Cluster Management at Scale 🔁</h2>
+
+<p>Szumski ran a survey before his &ldquo;Multicluster Without Federation&rdquo; talk, and found that on average, enterprise Kubernetes customers have 5-10 clusters total. But I was at Kubecon to give <a href="https://www.youtube.com/watch?v=UR8N6mIAFlM">a talk</a> on Edge Computing, where operators could be dealing with many <em>thousands</em> of clusters. In this case, cluster operators need both disaggregated <em>and</em> aggregated control. For instance, they must be able to manage namespaces across clusters, but then allow each cluster to make its own decisions about (for instance) request routing.</p>
+
+<p>I think the community is in the early stages of thinking about how this could actually work. For instance, one great Heptio <a href="https://www.youtube.com/watch?v=5kMz2oJgV0A">talk</a> (&ldquo;Clusters as Cattle&rdquo;) stressed the importance of treating clusters as disposable infrastructure, where cluster <a href="https://kubernetes.io/docs/setup/independent/create-cluster-kubeadm/">install</a> and upgrade must be automated and seamless. This is especially true in an at-scale multicluster use case where manual cluster lifecycling could be unrealistic. That talk introduced a multicluster app migration tool called <a href="https://github.com/heptio/ark">Heptio Ark</a>, a CLI that allows you to back up Kubernetes objects, then restore them from <code>.tar</code> files onto new clusters. I think this is definitely a step in the right direction for at-scale cluster management.</p>
+
+<h2 id="looking-ahead">Looking Ahead</h2>
+
+<p>If I had to boil all these observations into one, it would be that there is no single solution or tool that will satisfy all the multicluster use cases. Example: <a href="https://www.youtube.com/watch?v=2PRGUOxL36M&amp;t=0s&amp;index=75&amp;list=PLj6h78yzYM2N8GdbjmhVU65KYm_68qBmo">for CERN</a>, traditional Federation v1 actually works really well. Federation allowed them to deploy a Daemonset to 200+ clusters at once, in order to execute distributed scientific workloads.</p>
+
+<p>Beyond v1, work is in progress on <a href="https://github.com/kubernetes-sigs/federation-v2">Federation v2</a>, which provides not simply a replica of the traditional K8s API (as was the case in v1), but instead a toolkit for developers to define their own federated workload types by <a href="https://github.com/kubernetes-sigs/federation-v2#concepts">implementing</a> Templates, Placements, and Overrides. This would support not only a manual workload placement paradigm, but also an <a href="https://docs.google.com/document/d/1ihWETo-zE8U_QNuzw5ECxOWX0Df_2BVfO3lC4OesKRQ/edit#heading=h.cjzhckjkyyjf">automated system</a> where the Scheduler places workloads based on user-defined policy.</p>
+
+<p>Overall, I think that the multicluster Kubernetes space is changing rapidly as the community learns from mistakes, learns about new user needs, and aligns under a set of new tools— both within and outside the SIG. <a href="https://coreos.com/operators/">Operators</a>, for instance, were something I had never heard of prior to Kubecon, but in the future could be an exciting way for app owners to handle upgrades across multiple clusters.</p>
+
+<p>I think that as this year goes on, we will start to see more consensus around which tools work best for large swaths of multicluster users. I&rsquo;m excited to see what&rsquo;s next!</p>
+
+</div>
+
+
+    </main>
+
+    
+  </body>
+</html>

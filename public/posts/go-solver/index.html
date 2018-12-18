@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en-us" lang="en-us">
+<head>
+  <link href="//gmpg.org/xfn/11" rel="profile">
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta name="generator" content="Hugo 0.52" />
+
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>tiny solver in go &middot; Megan O&#39;Keefe</title>
+
+  
+  <link type="text/css" rel="stylesheet" href="css/print.css" media="print">
+  <link type="text/css" rel="stylesheet" href="css/poole.css">
+  <link type="text/css" rel="stylesheet" href="css/syntax.css">
+  <link type="text/css" rel="stylesheet" href="css/hyde.css">
+  <link href="https://fonts.googleapis.com/css?family=PT+Serif|Tinos" rel="stylesheet">
+
+
+  
+  <link rel="apple-touch-icon-precomposed" sizes="144x144" href="/apple-touch-icon-144-precomposed.png">
+  <link rel="shortcut icon" href="/favicon.png">
+
+  
+  <link href="" rel="alternate" type="application/rss+xml" title="Megan O&#39;Keefe" />
+
+  
+</head>
+
+  <body class="theme-base-0d ">
+  <aside class="sidebar">
+  <div class="container sidebar-sticky">
+    <div class="sidebar-about">
+      <a href=""><h1>Megan O&#39;Keefe</h1></a>
+      <p class="lead">
+      ⚡️ developer programs engineer 
+      </p>
+    </div>
+
+    <nav>
+      <ul class="sidebar-nav">
+        <li><a href="">Home</a> </li>
+        <li><a href="/about/"> About </a></li>
+      </ul>
+    </nav>
+  </div>
+</aside>
+
+    <main class="content container">
+    <div class="post">
+  <h1>tiny solver in go</h1>
+  <time datetime=2018-03-30T00:00:00Z class="post-date">Fri, Mar 30, 2018</time>
+  <p>I think that building small useful things is really gratifying.</p>
+
+<p>The other day, I was working through <a href="https://github.com/m-okeefe/go-ds/blob/master/problems/sheep/main.go">a programming problem</a> of the <a href="https://code.google.com/codejam/contest/6254486/dashboard">Codejam variety</a>. In the past, I&rsquo;ve usually tackled these sorts of problems in Python, but decided that day to work in Go.</p>
+
+<p>Most Codejam problems have the same input and output format &ndash; test file in, first line denotes number of testcases, one line per testcase, then the same for the output file.</p>
+
+<p>And so I decided to write a tiny question solver that handles this common format:</p>
+
+<pre><code>// a solver is a function that generates an answer to a programming question
+type Solver func(string) string
+</code></pre>
+
+<p>Strangely, despite having spent a few years with Go, I&rsquo;ve almost never created a <code>type</code> for a function. <code>Solver</code> is basically an interface that any programming problem-solver must implement. The <code>string</code> input is one test case from the &ldquo;in-file,&rdquo; and the <code>string</code> output is the solved result of that test case.</p>
+
+<p>Then I wrote a function that passes test cases from the input file to a function of type <code>Solver</code> &ndash;</p>
+
+<pre><code>func SolveTestfile(f string, s Solver) error {
+	output := []string{}
+	file, err := os.Open(f)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	scanner.Scan() //trash 1st line
+	i := 1
+	for scanner.Scan() {
+		result := s(scanner.Text())
+		output = append(output, result)
+		i = i + 1
+	}
+	return writeTestResults(output, fmt.Sprintf(&quot;OUT_%s&quot;, f))
+}
+</code></pre>
+
+<p>And finally just a small unit test that took in this sample &ldquo;in-file&rdquo; &ndash;</p>
+
+<pre><code>3
+hello
+big
+world
+</code></pre>
+
+<p>&ndash; Tested against an &ldquo;EchoSolver&rdquo; that spits back out the input as output, for each test case.</p>
+
+<pre><code>package test
+
+import (
+	&quot;testing&quot;
+)
+
+func EchoSolver(s string) string {
+	return s
+}
+
+func TestSolve(t *testing.T) {
+	err := SolveTestfile(&quot;echo_tiny.in&quot;, EchoSolver)
+	if err != nil {
+		t.Error(err)
+	} else {
+		t.Log(&quot;test succeeded&quot;)
+	}
+}
+</code></pre>
+
+<p>The output file:</p>
+
+<pre><code>Case #1: hello
+Case #2: big
+Case #3: world
+</code></pre>
+
+<p>Now when I solve past Codejam problems, I can just import the Solver, and swap in small/large test files easily.<br />
+Yay, tiny useful things!</p>
+
+</div>
+
+
+    </main>
+
+    
+  </body>
+</html>

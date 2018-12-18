@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en-us" lang="en-us">
+<head>
+  <link href="//gmpg.org/xfn/11" rel="profile">
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta name="generator" content="Hugo 0.52" />
+
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>migrating from govendor to dep &middot; Megan O&#39;Keefe</title>
+
+  
+  <link type="text/css" rel="stylesheet" href="css/print.css" media="print">
+  <link type="text/css" rel="stylesheet" href="css/poole.css">
+  <link type="text/css" rel="stylesheet" href="css/syntax.css">
+  <link type="text/css" rel="stylesheet" href="css/hyde.css">
+  <link href="https://fonts.googleapis.com/css?family=PT+Serif|Tinos" rel="stylesheet">
+
+
+  
+  <link rel="apple-touch-icon-precomposed" sizes="144x144" href="/apple-touch-icon-144-precomposed.png">
+  <link rel="shortcut icon" href="/favicon.png">
+
+  
+  <link href="" rel="alternate" type="application/rss+xml" title="Megan O&#39;Keefe" />
+
+  
+</head>
+
+  <body class="theme-base-0d ">
+  <aside class="sidebar">
+  <div class="container sidebar-sticky">
+    <div class="sidebar-about">
+      <a href=""><h1>Megan O&#39;Keefe</h1></a>
+      <p class="lead">
+      ⚡️ developer programs engineer 
+      </p>
+    </div>
+
+    <nav>
+      <ul class="sidebar-nav">
+        <li><a href="">Home</a> </li>
+        <li><a href="/about/"> About </a></li>
+      </ul>
+    </nav>
+  </div>
+</aside>
+
+    <main class="content container">
+    <div class="post">
+  <h1>migrating from govendor to dep</h1>
+  <time datetime=2018-04-10T00:00:00Z class="post-date">Tue, Apr 10, 2018</time>
+  <p>I love Go, but I can&rsquo;t say that Go package management is my favorite thing. Anytime I work in python (pip) or javascript (npm) or ruby (bundler), I breathe a little easier.</p>
+
+<p>But in Go, there&rsquo;s just <a href="https://github.com/blindpirate/report-of-build-tools-for-java-and-golang">a lot going on</a>, frequent change (tools come and go), and nothing is officially supported yet in the toolchain. I have helped start and maintain maybe half a dozen Go repositories in the last year, and up until today, all of them used <a href="https://github.com/kardianos/govendor">govendor</a>.</p>
+
+<p>But! There is hope with <a href="https://golang.github.io/dep/">dep</a>, an awesome (official!) experimental dependency manager. Once I heard that dep is on its way to be go official, I was excited to give it a try.</p>
+
+<p>And so my first task was to try to <a href="https://golang.github.io/dep/docs/migrating.html">migrate</a> a new API server I&rsquo;m building from govendor to dep.</p>
+
+<p>I started by removing the <code>/vendor</code> folder that was hidden away into the root of the repository, removing the (govendor-specific) <code>vendor.json</code> file, then running <code>dep init</code> from the root.</p>
+
+<p>This command builds a vendor folder and a <code>Gopkg.toml</code> / <code>Gopkg.lock</code>, through magic (Inference + Solving).</p>
+
+<p>I ran <code>dep init</code> for the first time and got the all clear!</p>
+
+<p>From there, I could run <code>dep status</code> and see something like this:</p>
+
+<pre><code>➜  api-server git:(master) dep status
+PROJECT                              CONSTRAINT     VERSION        REVISION  LATEST   PKGS USED
+github.com/gogo/protobuf             v1.0.0         v1.0.0         1adfc12   v1.0.0   2
+github.com/golang/glog               branch master  branch master  23def4e   23def4e  1
+github.com/golang/protobuf           v1.0.0         v1.0.0         9255415   v1.0.0   5
+github.com/google/gofuzz             branch master  branch master  24818f7   24818f7  1
+github.com/googleapis/gnostic        v0.1.0         v0.1.0         ee43cbb   v0.1.0   3
+github.com/howeyc/gopass             branch master  branch master  bf9dde6   bf9dde6  1
+github.com/imdario/mergo             v0.3.4         v0.3.4         9d5f127   v0.3.4   1
+github.com/json-iterator/go          1.1.3          1.1.3          ca39e5a   1.1.3    1
+...
+</code></pre>
+
+<p>This CLI output is just prettified <code>Gopkg.lock</code>. I really like how you can see the revision SHA along with the tagged releases that dep has cloned.</p>
+
+<p>As I added some code to the API server, along with a few import statements, all I had to do was run <code>dep ensure -add &lt;package-name&gt;</code> for each external package I needed.</p>
+
+<p>When I tried to rebuild my API server binary and got a few hundred errors from the vendored packages&ndash; unrecognized types, invalid parameters, the gamut. My intuition was that dep&rsquo;s Inference/Solving didn&rsquo;t account for certain version requirements between indirect dependencies.</p>
+
+<p>The specific issue was between the vendored <a href="https://github.com/kubernetes/helm/blob/master/docs/developers.md">Helm API</a> and its dependency, <a href="https://github.com/grpc/grpc-go">grpc-go</a>.</p>
+
+<p>After some sleuthing, I learned that dep had pulled a totally different version of the Helm API than the one my team was using, with <code>govendor</code>. This was because my teammate did a local <code>govendor add +m</code> (or the like) to add local packages in his <code>GOPATH</code> to the <code>/vendor</code> folder, whereas dep does clean clones only, and puts them in a special spot. However, while my teammate had pulled a specific release of the Helm API, dep had pulled the master branch.</p>
+
+<p>I got around this by creating a <code>constraint</code> in my <code>Gopkg.toml</code> &ndash;</p>
+
+<pre><code>[[constraint]]
+  name = &quot;k8s.io/helm&quot;
+  version = &quot;v2.8.2&quot;
+</code></pre>
+
+<p>Then re-running <code>dep ensure</code>. This downgraded the Helm API to the latest stable release. But! Then I tried to rebuild the api server binary and still got a ton of grpc errors. Hmm.</p>
+
+<p>After some <a href="https://github.com/kubernetes/helm/blob/release-2.8/glide.yaml#L28">more sleuthing</a> I learned that the latest release of Helm used a slightly older version of go-grpc. Aha!</p>
+
+<p>And so after creating one last <code>constraint</code>, using <code>=</code> to fix the <code>go-grpc</code> version at exactly the one that helm requires&hellip;</p>
+
+<pre><code>[[constraint]]
+  name = &quot;google.golang.org/grpc&quot;
+  version = &quot;=v1.7.2&quot;
+</code></pre>
+
+<p>My <code>Makefile</code> finally completed, and our repo was back in business! This was a great first introduction to dep, and so far it&rsquo;s worked really well for our project- I can&rsquo;t wait to continue using it as the project develops.</p>
+
+</div>
+
+
+    </main>
+
+    
+  </body>
+</html>

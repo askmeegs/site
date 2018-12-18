@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en-us" lang="en-us">
+<head>
+  <link href="//gmpg.org/xfn/11" rel="profile">
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta name="generator" content="Hugo 0.52" />
+
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>writing a Pocket -&gt; Kindle tool in Go &middot; Megan O&#39;Keefe</title>
+
+  
+  <link type="text/css" rel="stylesheet" href="css/print.css" media="print">
+  <link type="text/css" rel="stylesheet" href="css/poole.css">
+  <link type="text/css" rel="stylesheet" href="css/syntax.css">
+  <link type="text/css" rel="stylesheet" href="css/hyde.css">
+  <link href="https://fonts.googleapis.com/css?family=PT+Serif|Tinos" rel="stylesheet">
+
+
+  
+  <link rel="apple-touch-icon-precomposed" sizes="144x144" href="/apple-touch-icon-144-precomposed.png">
+  <link rel="shortcut icon" href="/favicon.png">
+
+  
+  <link href="" rel="alternate" type="application/rss+xml" title="Megan O&#39;Keefe" />
+
+  
+</head>
+
+  <body class="theme-base-0d ">
+  <aside class="sidebar">
+  <div class="container sidebar-sticky">
+    <div class="sidebar-about">
+      <a href=""><h1>Megan O&#39;Keefe</h1></a>
+      <p class="lead">
+      ⚡️ developer programs engineer 
+      </p>
+    </div>
+
+    <nav>
+      <ul class="sidebar-nav">
+        <li><a href="">Home</a> </li>
+        <li><a href="/about/"> About </a></li>
+      </ul>
+    </nav>
+  </div>
+</aside>
+
+    <main class="content container">
+    <div class="post">
+  <h1>writing a Pocket -&gt; Kindle tool in Go</h1>
+  <time datetime=2018-04-29T00:00:00Z class="post-date">Sun, Apr 29, 2018</time>
+  
+
+<p>I love to read, and I love physical books, but I also 1) travel a lot and 2) don&rsquo;t own (or like to own) a ton of stuff. And so I own a Kindle.</p>
+
+<p>I also use <a href="https://getpocket.com/a/queue/list/">Pocket</a> to save articles, short stories, poems, etc. to read later.</p>
+
+<p>When I first got my Kindle, I looked into existing tools that forward Pocket articles to your kindle. These tools exist (<a href="https://p2k.co/">this one</a>, or <a href="https://www.crofflr.com/#/home">this one</a>), but I don&rsquo;t love the way these services combine articles into one Kindle document. Once you get a lot of these Pocket deliveries to your Kindle, it makes it difficult to find a specific article. Plus, most of these tools aren&rsquo;t free.</p>
+
+<p>So to take the problem into my own somewhat capable hands, I decided to create a small tool called &ldquo;pocketsender&rdquo; that can forward all your unread Pocket articles to your Kindle, as separate documents.</p>
+
+<h2 id="how">how?</h2>
+
+<p>First, I knew that I&rsquo;d have to use the <a href="https://getpocket.com/developer/">Pocket API</a> to get my articles, then use Amazon&rsquo;s <a href="https://www.amazon.com/gp/sendtokindle/email">&ldquo;email to kindle&rdquo;</a> feature that allows you to attach PDFs. Amazon&rsquo;s backend for this will auto-convert PDFs if the email subject line is &ldquo;convert.&rdquo;</p>
+
+<p>Quickly, I realized there would be a problem: when you call the Pocket API to get your articles, it doesn&rsquo;t give you back the article text (assumedly for copyright reasons). You only get an excerpt of the article, and the URL.</p>
+
+<p>And so the workflow would have to go like this:</p>
+
+<ol>
+<li>🔑 Authenticate with the Pocket API</li>
+<li>Get all my unread articles. For each article&hellip;</li>
+<li>Get the URL, navigate to it, and grab the HTML contents</li>
+<li>📄 Convert the HTML to PDF</li>
+<li>Save that PDF file to a local dir</li>
+<li>💌 Dynamically construct an email, uploading that PDF as an attachment</li>
+<li>Send that email to my Kindle&rsquo;s email address. Then the Amazon backend converts the PDF attachment to Kindle format, and sends it to my Kindle device.</li>
+</ol>
+
+<p>Not the prettiest, but it will get the job done! Let&rsquo;s implement it.</p>
+
+<h2 id="go-scaffolding">go scaffolding</h2>
+
+<p>I knew ahead of time that I&rsquo;d want to have a <a href="https://www.docker.com/">Docker</a> image that can execute a Go binary, with some input config. So I implemented the pocketsender as a Go CLI that could run as a standalone executable or in Docker.</p>
+
+<p>I used <a href="https://github.com/urfave/cli">urfave/cli</a>, and wrote a <code>main.go</code> that runs my <a href="https://github.com/m-okeefe/pocketsender/blob/master/main.go#L51"><code>pocketsender.Check()</code></a> function. This <code>Check</code> function will hold the whole 7-step workflow described above.</p>
+
+<p>I also knew that I&rsquo;d have to vendor some dependencies. And since I&rsquo;m a <a href="http://m-okeefe.com/dep">dep convert</a>, I ran <code>dep.init</code> to initialize my <code>vendor/</code> folder.</p>
+
+<h2 id="pocket-api">🔑 pocket API</h2>
+
+<p>After some poking around, I found that someone <a href="https://github.com/motemen/go-pocket">already wrote</a> a Pocket API client in Go &ndash; score! So I vendored that and used its <a href="https://github.com/motemen/go-pocket/blob/master/api/retrieve.go#L153"><code>client.Retrieve()</code></a> function to get <a href="https://github.com/motemen/go-pocket/blob/master/api/retrieve.go#L27">unread</a> Pocket articles.</p>
+
+<p>I also used the same client to <a href="https://github.com/motemen/go-pocket/blob/master/api/modify.go#L10">archive</a> each Pocket article after emailing it to my Kindle, so that it would no longer show up in my Pocket List (or be emailed again on a subsequent run).</p>
+
+<h2 id="pdf-generation">📄 pdf generation</h2>
+
+<p>Now that I can get the URLs of all my unread articles, I need a way to pull down PDFs of each. I didn&rsquo;t really want to write my own tool that does this, so I used an existing Go <a href="https://github.com/SebastiaanKlippert/go-wkhtmltopdf">wrapper</a> on <a href="https://wkhtmltopdf.org/index.html">wkhtmltopdf</a>, which is open source.</p>
+
+<p>For this step, I instantiate a PDF converter, pass <code>wkhtmltopdf</code> the URL of an article, and save the resulting file in a temporary <code>/pdf</code> directory.</p>
+
+<p>Unfortunately as I tested my Go binary on my Mac, I encountered some &ldquo;SSL Handshake Error&rdquo; errors on a few of the article conversions, possibly <a href="https://github.com/wkhtmltopdf/wkhtmltopdf/issues/2912">this bug</a>. But I temporarily backburnered this problem because I knew I&rsquo;d be containerizing it, and thus running in Linux, not MacOS.</p>
+
+<h2 id="email-to-kindle">💌 email to Kindle</h2>
+
+<p>For composing and sending emails to my Kindle email address, I used the <a href="https://github.com/go-gomail/gomail">gomail</a> package, which worked great. I simply compose an email where the <code>to</code> and <code>from</code> addresses are based on the user&rsquo;s config. Then I <a href="https://github.com/m-okeefe/pocketsender/blob/master/pkg/pocketsender/pocketsender.go#L139">attach</a> the pdf I just generated. Then send it off to Amazon&rsquo;s servers to do the <code>pdf</code> -&gt; <code>azw</code> conversion and the actual sending to device. :)</p>
+
+<h2 id="make-the-magic-happen">✨ make the magic happen</h2>
+
+<p>After finishing my Go code, I wrote a simple <a href="https://github.com/m-okeefe/pocketsender/blob/master/Makefile"><code>Makefile</code></a> and <a href="https://github.com/m-okeefe/pocketsender/blob/master/Dockerfile"><code>Dockerfile</code></a> to containerize it. The base image I used is Ubuntu <a href="https://hub.docker.com/r/openlabs/docker-wkhtmltopdf/">with wkhtmltopdf pre-installed</a>.</p>
+
+<pre><code>$ docker run -v /Users/meokeefe/Documents/go/src/github.com/m-okeefe/pocketsender/config.json:/pocketsender/config.json  meganokeefe/pocketsender:0.0.1 --config /pocketsender/config.json
+
+****************************************************************************************
+P O C K E T S E N D E R             v0.0.1
+****************************************************************************************
+2018/04/29 13:21:03 Instantiating Pocket API client...
+2018/04/29 13:21:03 Retrieving unread Pocket articles for account...
+2018/04/29 13:21:04 Got 100 unread pocket articles, emailing...
+2018/04/29 13:21:04
+
+ ---&gt; Article 1/43:
+2018/04/29 13:21:04 Converting to pdf:  http://inference-review.com/article/time-travelers
+2018/04/29 13:21:13 Emailing PDF to kindle...
+2018/04/29 13:21:20 Sent!
+</code></pre>
+
+<h2 id="what-s-next">what&rsquo;s next</h2>
+
+<p>Now that I have a working tool, there are lots of things I want to do to improve it! Including:</p>
+
+<ul>
+<li>Prevent users from having to pass in their plaintext gmail password (maybe have pocketsender use <a href="https://www.vaultproject.io/">Vault</a>, and force users to pass in secrets in a secure way)</li>
+<li>Instead of running as a &ldquo;one and done,&rdquo; have pocketsender watch the user&rsquo;s pocket queue for new articles. This would let me (for instance) deploy pocketsender in <a href="https://kubernetes.io/">Kubernetes</a>, Cloud, etc. and forget about it : )</li>
+<li>Integrate more tightly with the Pocket API- for example, support autogenerating Access Keys. <a href="https://github.com/motemen/go-pocket/blob/master/auth/auth.go">go-pocket</a> does this well.</li>
+<li>Reduce the Docker image size. Right now <a href="https://hub.docker.com/r/meganokeefe/pocketsender/tags/">it&rsquo;s a whopping</a> 301MB, given that the <a href="https://hub.docker.com/r/openlabs/docker-wkhtmltopdf/tags/">base image</a> I&rsquo;m using is 200+ MB.<br /></li>
+<li>Fix the OpenSSL bugs so that pocketsender can also run from source on Mac, in addition to Linux. :)</li>
+</ul>
+
+<p>The initial source code is <a href="https://github.com/m-okeefe/pocketsender">here</a>. Thanks for reading!</p>
+
+</div>
+
+
+    </main>
+
+    
+  </body>
+</html>

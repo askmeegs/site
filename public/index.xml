@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Megan O&#39;Keefe</title>
+    <link>/</link>
+    <description>Recent content on Megan O&#39;Keefe</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <lastBuildDate>Fri, 25 May 2018 00:00:00 +0000</lastBuildDate>
+    
+	<atom:link href="/index.xml" rel="self" type="application/rss+xml" />
+    
+    
+    <item>
+      <title>good (not bad) APIs</title>
+      <link>/posts/on-apis/</link>
+      <pubDate>Fri, 25 May 2018 00:00:00 +0000</pubDate>
+      
+      <guid>/posts/on-apis/</guid>
+      <description>At work, I spend a lot of time with APIs &amp;ndash; using them, building them. The Swagger editor is familiar. JSON is comfortable. I know what GET, POST, and DELETE do.
+But lately I&amp;rsquo;ve found myself wondering if I&amp;rsquo;m doing APIs &amp;ldquo;right.&amp;rdquo; What does it mean to have a &amp;ldquo;good&amp;rdquo; API?
+This quest for information brought me all around the Web, and I was able to learn about lot of new stuff.</description>
+    </item>
+    
+    <item>
+      <title>recap: multicluster kubernetes @ kubecon EU</title>
+      <link>/posts/kubecon-europe18/</link>
+      <pubDate>Wed, 16 May 2018 00:00:00 +0000</pubDate>
+      
+      <guid>/posts/kubecon-europe18/</guid>
+      <description>This month, I attended Kubecon + CloudNativeCon EU, in Copenhagen, Denmark. This conference covers not only Kubernetes but also the growing number of open source projects within the Cloud Native Computing Foundation.
+It was an exciting conference, with lots of buzz especially around Serverless and Machine Learning with Kubeflow. I think we are also seeing that as more enterprises move to Kubernetes, the more stories they have to tell about their use cases, deployments, and challenges; overall, my favorite talk, from Sarah Wells of the London Financial Times, included some awesome insights about adopting Kubernetes as an organization.</description>
+    </item>
+    
+    <item>
+      <title>writing a Pocket -&gt; Kindle tool in Go</title>
+      <link>/posts/pocketsender/</link>
+      <pubDate>Sun, 29 Apr 2018 00:00:00 +0000</pubDate>
+      
+      <guid>/posts/pocketsender/</guid>
+      <description>I love to read, and I love physical books, but I also 1) travel a lot and 2) don&amp;rsquo;t own (or like to own) a ton of stuff. And so I own a Kindle.
+I also use Pocket to save articles, short stories, poems, etc. to read later.
+When I first got my Kindle, I looked into existing tools that forward Pocket articles to your kindle. These tools exist (this one, or this one), but I don&amp;rsquo;t love the way these services combine articles into one Kindle document.</description>
+    </item>
+    
+    <item>
+      <title>tensorflow- day zero!</title>
+      <link>/posts/tensorflow/</link>
+      <pubDate>Sun, 22 Apr 2018 00:00:00 +0000</pubDate>
+      
+      <guid>/posts/tensorflow/</guid>
+      <description>I don&amp;rsquo;t do a lot of (read: any) machine learning in my current role, which is focused on systems infrastructure. But interestingly, I sort of have to be conversant in machine learning (applications, trends, who uses what to do what and why, etc.) in order to help make sure the stuff my team builds is relevant. ie. &amp;ldquo;I don&amp;rsquo;t need to use this but I need to know it.&amp;rdquo;
+I have a past life as an undergrad machine learning-esque person that was less math, more &amp;ldquo;sitting in a a proverbial dumpster full of data and trying to do something with it.</description>
+    </item>
+    
+    <item>
+      <title>migrating from govendor to dep</title>
+      <link>/posts/dep/</link>
+      <pubDate>Tue, 10 Apr 2018 00:00:00 +0000</pubDate>
+      
+      <guid>/posts/dep/</guid>
+      <description>I love Go, but I can&amp;rsquo;t say that Go package management is my favorite thing. Anytime I work in python (pip) or javascript (npm) or ruby (bundler), I breathe a little easier.
+But in Go, there&amp;rsquo;s just a lot going on, frequent change (tools come and go), and nothing is officially supported yet in the toolchain. I have helped start and maintain maybe half a dozen Go repositories in the last year, and up until today, all of them used govendor.</description>
+    </item>
+    
+    <item>
+      <title>tiny solver in go</title>
+      <link>/posts/go-solver/</link>
+      <pubDate>Fri, 30 Mar 2018 00:00:00 +0000</pubDate>
+      
+      <guid>/posts/go-solver/</guid>
+      <description>I think that building small useful things is really gratifying.
+The other day, I was working through a programming problem of the Codejam variety. In the past, I&amp;rsquo;ve usually tackled these sorts of problems in Python, but decided that day to work in Go.
+Most Codejam problems have the same input and output format &amp;ndash; test file in, first line denotes number of testcases, one line per testcase, then the same for the output file.</description>
+    </item>
+    
+    <item>
+      <title>About</title>
+      <link>/about/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      
+      <guid>/about/</guid>
+      <description>Hello! I&amp;rsquo;m Megan, a Developer Programs Engineer at Google Cloud Platform. I work on building awesome developer experiences for Kubernetes and Istio. I love: Go, containers, writing, and building developer tools.</description>
+    </item>
+    
+  </channel>
+</rss>

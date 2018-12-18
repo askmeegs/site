@@ -1,0 +1,17 @@
+baseURL = ""
+languageCode = "en-us"
+title = "Megan O'Keefe"
+theme = "hyde"
+
+[params]
+  themeColor = "theme-base-0d"
+
+
+[menu]
+
+  [[menu.main]]
+    identifier = "about"
+    name = "About"
+    pre = "<i class='fa fa-heart'></i>"
+    url = "/about/"
+    weight = -110
